@@ -1,0 +1,164 @@
+---
+title: "Project Macro"
+output: html_notebook
+---
+
+
+```{r}
+library(dplyr)
+library(tidyverse)
+
+
+df = read.csv("VARS1.csv")
+df %>% head()
+```
+
+```{r}
+#Download packages
+install.packages("urca")
+install.packages("vars")
+install.packages("mFilter")
+install.packages("tseries")
+install.packages("forecast")
+
+```
+
+
+```{r}
+library(urca)
+library(vars)
+library(mFilter)
+library(tseries)
+library(readxl)
+```
+
+
+
+
+```{r}
+#time series object 
+IFt<-ts(df$IF,start=(c(1995,3)),frequency = 4)
+unemt<-ts(df$UNEM,start=(c(1995,3)),frequency = 4)
+unemt %>% head(10)
+```
+
+
+```{r}
+Ols1<-lm(IFt~unemt)
+summary(Ols1)
+```
+
+
+```{r}
+#Arima
+# Null hypothesi is a unit root is present in time series data. herw we can say that p value is greater than 0.59, then we can't ingore the null hpothesis (in our case there is stationary/unit root)
+adf.test(IFt)
+
+
+# we can also conculde the same argument for the unemployment ( there is non-stationairty)
+adf.test(unemt)
+```
+
+
+```{r}
+
+modelif<-forecast::auto.arima(IFt,ic="aic",trace = TRUE)
+modelunem<-forecast::  auto.arima(unemt,ic="aic",trace = TRUE)
+
+```
+
+```{r}
+install.packages("LjubdBoxTest")
+library("LjubdBoxTest")
+boxresult = LjungBoxTest(modelif$residuals,k=2,StartLag=1)
+
+```
+
+
+
+
+```{r}
+acf(modelif$residuals)  
+pacf(modelif$residuals)
+```
+
+```{r}
+pacf(modelif$residuals)
+```
+
+
+
+
+```{r}
+acf(modelunem$residuals)  
+pacf(modelunem$residuals)
+```
+
+
+```{r}
+myforecastIF<-forecast::forecast(modelif,level = c(95),h=8)
+myforecastIF
+```
+
+
+```{r}
+myforecastunem<-forecast::forecast(modelunem,level = c(95),h=8)
+myforecastunem
+```
+
+
+```{r}
+forecast::autoplot(myforecastIF)
+forecast::autoplot(myforecastunem)
+```
+
+
+```{r}
+#Var model
+
+Ols1=lm(IFt~unemt)
+summary(Ols1)
+```
+
+
+```{r}
+#Auto corellation
+
+acf(IFt, main=" ACF for Inflation rate")
+pacf(IFt, main=" PACF for  Inflation rate")
+```
+
+
+```{r}
+acf(unemt, main=" ACF for Unemployemet")
+pacf(unemt, main=" PACF for Unemployemet")
+```
+
+
+```{r}
+# Finding optimal lags
+
+okun.by<-cbind(IFt,unemt)
+colnames(okun.by)<-cbind("Inflation","Unemployement")
+
+lagselect<-VARselect(okun.by, lag.max = 10, type="const")
+lagselect$selection
+```
+```{r}
+df
+```
+
+
+```{r}
+#Buildin VAR
+
+okun.by.var<-VAR(okun.by,p=6,type="const", season = NULL, exogen = NULL)
+summary(okun.by.var)
+
+F<-forecast::forecast(okun.by.var)
+F
+forecast::autoplot(F)
+
+
+```
+
